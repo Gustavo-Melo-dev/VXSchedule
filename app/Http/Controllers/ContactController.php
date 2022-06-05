@@ -2,103 +2,79 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Contact;
+use App\Contact;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redirect;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 
 class ContactController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
-    {
-        return Inertia::render('Contact/Index', [
-            'contacts' => Contact::all()->map(function (Contact $contact){
-                return [
-                    'id' => $contact->id,
-                    'image' => asset('storage/' . $contact->image),
-                    'name' => $contact->name,
-                    'tel_number' => $contact->tel_number,
-                    'address' => $contact->address
-                ];
-            })
-        ]);
+
+    public function index(){
+        $filter = request('filter');
+
+        $github = Http::get('https://api.github.com/users/defunkt');
+
+        if($filter){
+            $contacts = Contact::where([
+                ['name', 'like','%'.$filter.'%']
+            ])->orderBy('name', 'ASC')->get();
+        } else {
+            $contacts = DB::table('contacts')->orderBy('name', 'ASC')->get();
+        }
+
+        return view('contacts.index', ['contacts' => $contacts, 'github' => $github->json(), 'filter' => $filter]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        return Inertia::render('Contact/Create');
+    public function listContacts(){
+        return view('contacts.list');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        Contact::create([
-            'image' => $request->file('image')->store('contacts', 'public'),
+    public function about(){
+        return view('contacts.about.about');
+    }
+
+    public function create(){
+        $addresses = Http::get('https://viacep.com.br/ws/49032490/json/');
+        dd($addresses->json());
+
+        return view('contacts.create.create', ['addresses' => $addresses]);
+    }
+
+    public function store(Request $request, Contact $contact){
+        $contact = Contact::create([
             'name' => $request->name,
-            'tel_number' => $request->tel_number,
-            'address' => $request->address,
+            'image' => $request->file('image')->store('contacts/', 'public'),
+            'phone' => $request->phone,
+            'address' => $request->address
         ]);
 
-        return Redirect::route('contact.index');
+        Mail::send('contacts.email.email', $contact->toArray(), function($message) {
+            $message->to('emilly@gmail.com', 'Emilly Haine')->subject('Contato adicionado com sucesso!');
+        });
+
+        return redirect()->route('contacts.index');
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
+    public function edit(Contact $contact){
+        return view('contacts.edit.edit', compact('contact'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
+    public function update(Request $request, Contact $contact){
+
+        $contact->update([
+            'name' => $request->name,
+            'image' => $request->file('image')->store('contacts/', 'public'),
+            'phone' => $request->phone,
+            'address' => $request->address
+        ]);
+
+        return redirect()->route('contacts.index');
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        //
+    public function delete(Contact $contact){
+        $contact->delete();
+        return redirect()->route('contacts.index');
     }
 }
