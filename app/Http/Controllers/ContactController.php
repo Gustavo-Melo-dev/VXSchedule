@@ -2,79 +2,86 @@
 
 namespace App\Http\Controllers;
 
-use App\Contact;
+use App\Http\Requests\StoreContact;
+use App\Jobs\SendEmail;
+use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 class ContactController extends Controller
 {
-
     public function index(){
-        $filter = request('filter');
+        $search = request('search');
 
-        $github = Http::get('https://api.github.com/users/defunkt');
-
-        if($filter){
+        if($search){
             $contacts = Contact::where([
-                ['name', 'like','%'.$filter.'%']
-            ])->orderBy('name', 'ASC')->get();
+                ['first_name', 'like', $search.'%'],
+            ])->groupBy('first_name')->orderBy('first_name', 'ASC')->get();
         } else {
-            $contacts = DB::table('contacts')->orderBy('name', 'ASC')->get();
+            $contacts = DB::table('contacts')->orderBy('first_name', 'ASC')->get();
         }
 
-        return view('contacts.index', ['contacts' => $contacts, 'github' => $github->json(), 'filter' => $filter]);
-    }
-
-    public function listContacts(){
-        return view('contacts.list');
-    }
-
-    public function about(){
-        return view('contacts.about.about');
+        return view('contacts.index', ['contacts' => $contacts, 'search' => $search]);
     }
 
     public function create(){
-        $addresses = Http::get('https://viacep.com.br/ws/49032490/json/');
-        dd($addresses->json());
-
-        return view('contacts.create.create', ['addresses' => $addresses]);
+        return view('contacts.create.create');
     }
 
-    public function store(Request $request, Contact $contact){
+    public function store(StoreContact $request){
+
+        $this->validated();
+
         $contact = Contact::create([
-            'name' => $request->name,
-            'image' => $request->file('image')->store('contacts/', 'public'),
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'phone' => $request->phone,
-            'address' => $request->address
+            'email' => $request->email,
+            'cep' => $request->cep,
+            'road' => $request->road,
+            'district' => $request->district,
+            'city' => $request->city,
+            'uf' => $request->uf,
+            'ibge' => $request->ibge
+        ]);
+
+        SendEmail::dispatch($contact);
+
+        dd($contact);
+
+        return redirect()->route('contacts.index');;
+    }
+
+    public function edit(Contact $contact){
+        return view('contacts.edit.edit', ['contact' => $contact]);
+    }
+
+    public function update(Request $request, Contact $contact) {
+
+        $contact->update([
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'cep' => $request->cep,
+            'road' => $request->road,
+            'district' => $request->district,
+            'city' => $request->city,
+            'uf' => $request->uf,
+            'ibge' => $request->ibge
         ]);
 
         Mail::send('contacts.email.email', $contact->toArray(), function($message) {
-            $message->to('emilly@gmail.com', 'Emilly Haine')->subject('Contato adicionado com sucesso!');
+            $message->to('gustavo.dsantosmelo@gmail.com', 'Gustavo Melo')->subject('Contato adicionado com sucesso!');
         });
 
         return redirect()->route('contacts.index');
     }
 
-    public function edit(Contact $contact){
-        return view('contacts.edit.edit', compact('contact'));
-    }
-
-    public function update(Request $request, Contact $contact){
-
-        $contact->update([
-            'name' => $request->name,
-            'image' => $request->file('image')->store('contacts/', 'public'),
-            'phone' => $request->phone,
-            'address' => $request->address
-        ]);
-
-        return redirect()->route('contacts.index');
-    }
-
-    public function delete(Contact $contact){
+    public function destroy(Contact $contact){
         $contact->delete();
+
         return redirect()->route('contacts.index');
     }
 }
