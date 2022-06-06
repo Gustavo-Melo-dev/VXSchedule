@@ -10,7 +10,7 @@
     <header>Cadastro de contato efetuado com sucesso!</header>
     <main>
         <p>
-            O contato {first_name} {last_name} foi adicionado!
+            O contato {{$contact->first_name . " " . $contact->last_name}} foi adicionado!
         </p>
     </main>
 </body>

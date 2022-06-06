@@ -72,7 +72,7 @@
                                         Cidade
                                     </th>
                                     <th scope="col" class="px-6 py-3" id="display-none">
-                                        Apelido
+                                        Email
                                     </th>
                                     <th scope="col" class="px-6 py-3">
                                         Ações
@@ -84,7 +84,9 @@
                                     <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                                         <th scope="row"
                                             class="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                                            {{$contact->first_name . ' ' . $contact->last_name}}
+                                            <a href="{{route('contacts.show', $contact->id)}}">
+                                                {{$contact->first_name . ' ' . $contact->last_name}}
+                                            </a>
                                         </th>
                                         <td class="px-6 py-4" id="display-none">
                                             {{$contact->phone}}

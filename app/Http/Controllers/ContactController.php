@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreContact;
-use App\Jobs\SendEmail;
+use App\Mail\ContactRegistrationMail;
 use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ class ContactController extends Controller
         if($search){
             $contacts = Contact::where([
                 ['first_name', 'like', $search.'%'],
-            ])->groupBy('first_name')->orderBy('first_name', 'ASC')->get();
+            ])->groupBy('id','first_name')->orderBy('first_name', 'ASC')->get();
         } else {
             $contacts = DB::table('contacts')->orderBy('first_name', 'ASC')->get();
         }
@@ -30,8 +30,6 @@ class ContactController extends Controller
     }
 
     public function store(StoreContact $request){
-
-        $this->validated();
 
         $contact = Contact::create([
             'first_name' => $request->first_name,
@@ -46,9 +44,9 @@ class ContactController extends Controller
             'ibge' => $request->ibge
         ]);
 
-        SendEmail::dispatch($contact);
+        $contact->save();
 
-        dd($contact);
+        Mail::to($contact->email)->send(new ContactRegistrationMail($contact));
 
         return redirect()->route('contacts.index');;
     }
@@ -72,11 +70,11 @@ class ContactController extends Controller
             'ibge' => $request->ibge
         ]);
 
-        Mail::send('contacts.email.email', $contact->toArray(), function($message) {
-            $message->to('gustavo.dsantosmelo@gmail.com', 'Gustavo Melo')->subject('Contato adicionado com sucesso!');
-        });
-
         return redirect()->route('contacts.index');
+    }
+
+    public function show(Contact $contact){
+        return view('contacts.show.show', ['contact' => $contact]);
     }
 
     public function destroy(Contact $contact){

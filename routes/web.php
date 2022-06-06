@@ -28,6 +28,7 @@ Route::get('/oi', function () {
 
 Route::get('/index', [ContactController::class, 'index'])->name('contacts.index');
 Route::get('/create', [ContactController::class, 'create'])->name('contacts.create');
+Route::get('/show/{contact}', [ContactController::class, 'show'])->name('contacts.show');
 Route::get('/contacts/{contact}/edit', [ContactController::class, 'edit'])->name('contacts.edit');
 
 
